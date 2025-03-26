@@ -1,0 +1,36 @@
+.mapContainer {
+  height: 500px;
+  width: 100%;
+  margin: 20px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #f8f9fa;
+}
+
+.leafletContainer {
+  height: 100%;
+  width: 100%;
+}
+
+.popup {
+  min-width: 200px;
+}
+
+.popup h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+}
+
+.popup p {
+  margin: 5px 0;
+  color: #34495e;
+}
+
+.leafletMarker {
+  transition: transform 0.3s ease;
+}
+
+.leafletMarker:hover {
+  transform: scale(1.2);
+}

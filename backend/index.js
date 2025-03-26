@@ -2,6 +2,8 @@ const express = require("express");
 const { Pool } = require("pg");
 const cors = require("cors");
 const { exec } = require("child_process");
+const http = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 // 0. Konfigurasi Timezone (Asia/Jakarta)
@@ -155,6 +157,9 @@ app.post("/api/lapor", async (req, res) => {
 
     await pool.query("COMMIT");
 
+    // Trigger real-time update
+    await broadcastParkirUpdate();
+
     res.json({
       success: true,
       data: updateResult.rows[0],
@@ -188,7 +193,20 @@ app.get("/api/health", (_, res) => {
   });
 });
 
-// 8. Error Handling Global
+// 8. Endpoint Lokasi Parkir
+app.get("/api/lokasi-parkir", async (req, res) => {
+  try {
+    console.log("Mencoba koneksi database...");
+    const result = await pool.query("SELECT * FROM lokasi_parkir");
+    console.log("Data dari DB:", result.rows);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error DB:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 9. Error Handling Global
 app.use((err, _, res, __) => {
   console.error("Global Error Handler:", err);
   res.status(500).json({
@@ -200,11 +218,30 @@ app.use((err, _, res, __) => {
   });
 });
 
-// 9. Jalankan Server
+// 10. Setup Socket.io
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
+});
+
+// Fungsi broadcast update
+const broadcastParkirUpdate = async () => {
+  try {
+    const result = await pool.query("SELECT * FROM lokasi_parkir");
+    io.emit("parkir-update", result.rows);
+  } catch (err) {
+    console.error("Gagal broadcast update:", err);
+  }
+};
+
+// 11. Jalankan Server
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`
-  🚀 Server berjalan di port ${PORT}
+  🚀 Server & Socket.io berjalan di port ${PORT}
   Mode: ${process.env.NODE_ENV || "development"}
   Database: ${pool.options.connectionString.split("@")[1]}
   `);

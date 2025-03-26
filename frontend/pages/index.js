@@ -1,4 +1,8 @@
 import { useState } from "react";
+import dynamic from "next/dynamic";
+const MapParkir = dynamic(() => import("../components/MapParkir"), {
+  ssr: false, // Nonaktifkan SSR untuk Leaflet
+});
 
 export default function Home() {
   const [lokasiId, setLokasiId] = useState("");
@@ -69,6 +73,17 @@ export default function Home() {
       <h1 style={{ textAlign: "center", color: "#fff", marginBottom: "20px" }}>
         Sistem Prediksi Parkir UB
       </h1>
+
+      <div
+        style={{
+          marginTop: "20px",
+          marginBottom: "20px",
+          borderRadius: "10px",
+        }}
+      >
+        <h2>Peta Parkir UB</h2>
+        <MapParkir />
+      </div>
 
       {/* Section Prediksi */}
       <div

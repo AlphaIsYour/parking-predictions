@@ -1,45 +1,87 @@
-"use client"; // Paksa render di client-side
-
+"use client";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { useState, useEffect } from "react";
 import L from "leaflet";
+import { io } from "socket.io-client";
+import "leaflet/dist/leaflet.css";
+import styles from "./MapParkir.module.css";
 
-const getIcon = (status) => {
-  const iconUrl = {
-    kosong:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-    ramai:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png",
-    penuh:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-  };
-  return new L.Icon({
-    iconUrl: iconUrl[status],
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-};
+// Fix icon issue
+const DefaultIcon = L.icon({
+  iconUrl: "/map-icons/default-marker.png",
+  shadowUrl: "/map-icons/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
-export default function MapParkir({ parkirData }) {
+export default function MapParkir() {
+  const [parkirData, setParkirData] = useState([]);
+  const [mapReady, setMapReady] = useState(false);
+  const center = [-7.952968, 112.613808];
+
+  useEffect(() => {
+    const socket = io("http://localhost:5001"); // Sesuaikan port backend
+
+    // Ambil data awal
+    fetch("http://localhost:5001/api/lokasi-parkir")
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal mengambil data");
+        return res.json();
+      })
+      .then((data) => {
+        setParkirData(data);
+        setMapReady(true);
+      })
+      .catch((err) => {
+        console.error("Error:", err);
+        setMapReady(true); // Tetap render map
+      });
+
+    // Dengar update real-time
+    socket.on("parkir-update", (data) => {
+      setParkirData(data);
+    });
+
+    return () => socket.disconnect();
+  }, []);
+
   return (
-    <MapContainer
-      key={parkirData.length} // Tambahkan ini
-      center={[-7.952, 112.613]}
-      zoom={16}
-      style={{ height: "400px", width: "100%" }}
-    >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      {parkirData.map((parkir) => (
-        <Marker
-          key={parkir.id}
-          position={[parkir.latitude, parkir.longitude]}
-          icon={getIcon(parkir.status)}
+    <div className={styles.mapContainer}>
+      {mapReady && (
+        <MapContainer
+          center={center}
+          zoom={16}
+          scrollWheelZoom={false}
+          className={styles.leafletContainer}
         >
-          <Popup>
-            {parkir.nama} - Status: {parkir.status}
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+
+          {parkirData.map((parkir) => (
+            <Marker
+              key={parkir.id}
+              position={[parkir.latitude, parkir.longitude]}
+              icon={L.icon({
+                iconUrl: `/map-icons/${parkir.status}-marker.png`,
+                shadowUrl: "/map-icons/marker-shadow.png",
+                iconSize: [25, 41],
+                iconAnchor: [19, 38],
+              })}
+            >
+              <Popup>
+                <div className={styles.popup}>
+                  <h3>{parkir.nama}</h3>
+                  <p>Status: {parkir.status}</p>
+                  <p>Kapasitas: {parkir.kapasitas}</p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      )}
+    </div>
   );
 }
