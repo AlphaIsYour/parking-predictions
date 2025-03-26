@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { io } from "socket.io-client";
 const MapParkir = dynamic(() => import("../components/MapParkir"), {
-  ssr: false, // Nonaktifkan SSR untuk Leaflet
+  ssr: false,
 });
 
 export default function Home() {
@@ -10,6 +11,48 @@ export default function Home() {
   const [status, setStatus] = useState("kosong");
   const [jam, setJam] = useState("");
   const [hari, setHari] = useState("");
+  const [parkirData, setParkirData] = useState([]);
+  const [filters, setFilters] = useState({
+    status: "",
+    minKapasitas: "",
+    maxKapasitas: "",
+  });
+
+  // Fungsi untuk mengambil data awal
+  const fetchInitialData = async () => {
+    try {
+      const res = await fetch("http://localhost:5001/api/lokasi-parkir");
+      const data = await res.json();
+      setParkirData(data);
+    } catch (err) {
+      console.error("Gagal mengambil data awal:", err);
+    }
+  };
+
+  // Fungsi filter
+  const fetchDataWithFilters = async () => {
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const res = await fetch(
+        `http://localhost:5001/api/lokasi-parkir/filter?${queryParams}`
+      );
+      const data = await res.json();
+      setParkirData(data);
+    } catch (err) {
+      console.error("Gagal filter:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchInitialData();
+
+    const socket = io("http://localhost:5001");
+    socket.on("parkir-update", (data) => {
+      setParkirData(data);
+    });
+
+    return () => socket.disconnect();
+  }, []);
 
   const checkPrediksi = async () => {
     // Validasi input
@@ -69,23 +112,94 @@ export default function Home() {
 
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
-      {/* Header */}
       <h1 style={{ textAlign: "center", color: "#fff", marginBottom: "20px" }}>
         Sistem Prediksi Parkir UB
       </h1>
 
+      {/* Section Filter */}
       <div
         style={{
-          marginTop: "20px",
-          marginBottom: "20px",
+          backgroundColor: "#f8f9fa",
+          padding: "20px",
           borderRadius: "10px",
+          marginBottom: "20px",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          color: "#000",
         }}
       >
-        <h2>Peta Parkir UB</h2>
-        <MapParkir />
+        <h2 style={{ color: "#34495e", marginBottom: "15px" }}>
+          🔍 Filter Parkir
+        </h2>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            style={{
+              padding: "8px",
+              borderRadius: "5px",
+              border: "1px solid #ddd",
+              minWidth: "150px",
+            }}
+          >
+            <option value="">Semua Status</option>
+            <option value="kosong">Kosong</option>
+            <option value="ramai">Ramai</option>
+            <option value="penuh">Penuh</option>
+          </select>
+
+          <input
+            type="number"
+            placeholder="Kapasitas Min"
+            value={filters.minKapasitas}
+            onChange={(e) =>
+              setFilters({ ...filters, minKapasitas: e.target.value })
+            }
+            style={{
+              padding: "8px",
+              borderRadius: "5px",
+              border: "1px solid #ddd",
+              width: "120px",
+            }}
+          />
+
+          <input
+            type="number"
+            placeholder="Kapasitas Max"
+            value={filters.maxKapasitas}
+            onChange={(e) =>
+              setFilters({ ...filters, maxKapasitas: e.target.value })
+            }
+            style={{
+              padding: "8px",
+              borderRadius: "5px",
+              border: "1px solid #ddd",
+              width: "120px",
+            }}
+          />
+
+          <button
+            onClick={fetchDataWithFilters}
+            style={{
+              padding: "8px 15px",
+              backgroundColor: "#e67e22",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+            Terapkan Filter
+          </button>
+        </div>
       </div>
 
-      {/* Section Prediksi */}
+      {/* Peta */}
+      <div style={{ marginBottom: "30px" }}>
+        <h2 style={{ color: "#fff", marginBottom: "10px" }}>Peta Parkir UB</h2>
+        <MapParkir parkirData={parkirData} />
+      </div>
+
+      {/* ... (section prediksi dan laporan tetap sama seperti sebelumnya) ... */}
       <div
         style={{
           backgroundColor: "#f8f9fa",

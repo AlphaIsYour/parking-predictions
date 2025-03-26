@@ -206,6 +206,37 @@ app.get("/api/lokasi-parkir", async (req, res) => {
   }
 });
 
+// index.js (Backend)
+app.get("/api/lokasi-parkir/filter", async (req, res) => {
+  try {
+    const { status, minKapasitas, maxKapasitas } = req.query;
+
+    let query = "SELECT * FROM lokasi_parkir WHERE 1=1";
+    const params = [];
+
+    // Filter Status
+    if (status) {
+      query += ` AND status = $${params.length + 1}`;
+      params.push(status);
+    }
+
+    // Filter Kapasitas
+    if (minKapasitas) {
+      query += ` AND kapasitas >= $${params.length + 1}`;
+      params.push(minKapasitas);
+    }
+    if (maxKapasitas) {
+      query += ` AND kapasitas <= $${params.length + 1}`;
+      params.push(maxKapasitas);
+    }
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 9. Error Handling Global
 app.use((err, _, res, __) => {
   console.error("Global Error Handler:", err);
