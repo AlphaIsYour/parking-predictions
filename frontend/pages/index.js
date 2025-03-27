@@ -4,7 +4,9 @@ import { io } from "socket.io-client";
 import { Bar } from "react-chartjs-2";
 import { Chart, registerables } from "chart.js";
 import { FiSun, FiMoon, FiNavigation } from "react-icons/fi";
-import LoadingSpinner from "../components/LoadingSpinner"; // Buat komponen spinner
+import LoadingSpinner from "../components/LoadingSpinner";
+import ChartDataLabels from "chartjs-plugin-datalabels";
+Chart.register(ChartDataLabels);
 const MapParkir = dynamic(() => import("../components/MapParkir"), {
   ssr: false,
 });
@@ -220,24 +222,89 @@ export default function Home() {
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
             <h2 className="text-xl font-semibold mb-4">📊 Statistik Parkir</h2>
-            {statsData && (
+            {statsData ? (
               <Bar
+                className="mt-30"
                 data={{
-                  labels: statsData.map((item) => item.status),
+                  labels: statsData.map((item) => item.status.toUpperCase()),
                   datasets: [
                     {
-                      label: "Jumlah Parkir",
+                      label: "Jumlah Lokasi",
                       data: statsData.map((item) => item.total),
                       backgroundColor: [
-                        "#2ecc71", // Kosong
-                        "#f1c40f", // Ramai
-                        "#e74c3c", // Penuh
+                        "rgba(46, 204, 113, 0.8)", // Kosong (hijau transparan)
+                        "rgba(231, 76, 60, 0.8)", // Ramai (merah transparan)
+                        "rgba(241, 196, 15, 0.8)", // Penuh (kuning transparan)
                       ],
+                      borderColor: [
+                        "#27ae60", // Border hijau
+                        "#c0392b", // Border merah
+                        "#f39c12", // Border kuning
+                      ],
+                      borderWidth: 2,
+                      borderRadius: 8, // Sudut melengkung
+                      barThickness: 70, // Lebar bar
                     },
                   ],
                 }}
-                options={{ responsive: true }}
+                options={{
+                  responsive: true,
+                  plugins: {
+                    legend: {
+                      position: "top",
+                      labels: {
+                        color: darkMode ? "#fff" : "#2d3748", // Warna label dark mode
+                        font: { size: 14 },
+                      },
+                    },
+                    tooltip: {
+                      backgroundColor: darkMode ? "#2d3748" : "#fff",
+                      titleColor: darkMode ? "#fff" : "#2d3748",
+                      bodyColor: darkMode ? "#fff" : "#2d3748",
+                    },
+                    datalabels: {
+                      // Butuh instal plugin
+                      color: darkMode ? "#fff" : "#2d3748",
+                      anchor: "center",
+                      align: "top",
+                      formatter: (value) => `${value} Lokasi`,
+                      offset: 10,
+                    },
+                  },
+                  scales: {
+                    y: {
+                      ticks: {
+                        color: darkMode ? "#fff" : "#2d3748",
+                        stepSize: 1,
+                      },
+                      grid: { color: darkMode ? "#4a5568" : "#e2e8f0" },
+                    },
+                    x: {
+                      ticks: {
+                        color: darkMode ? "#fff" : "#2d3748",
+                        font: { weight: "bold" },
+                        // padding: 10,
+                      },
+                      grid: { display: false },
+                    },
+                  },
+                  animation: {
+                    duration: 1500, // Animasi lebih panjang
+                    easing: "easeOutQuart",
+                  },
+                  onClick: (_, elements) => {
+                    if (elements.length > 0) {
+                      const index = elements[0].index;
+                      const status = statsData[index].status;
+                      setFilters({ ...filters, status }); // Auto filter saat bar diklik
+                    }
+                  },
+                }}
               />
+            ) : (
+              <p className="text-center text-gray-500">
+                🔍 Data statistik tidak tersedia
+              </p>
             )}
           </div>
         </div>
