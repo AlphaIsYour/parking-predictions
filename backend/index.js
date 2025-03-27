@@ -4,6 +4,7 @@ const cors = require("cors");
 const { exec } = require("child_process");
 const http = require("http");
 const { Server } = require("socket.io");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 // 0. Konfigurasi Timezone (Asia/Jakarta)
@@ -11,6 +12,15 @@ process.env.TZ = "Asia/Jakarta";
 
 // 1. Inisialisasi Express
 const app = express();
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 100, // Maksimal 100 request per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
 
 // 2. Middleware
 app.use(
@@ -20,12 +30,11 @@ app.use(
     allowedHeaders: "Content-Type,Authorization",
   })
 );
+app.use(express.json());
 
 app.get("/api/test", (_, res) => {
   res.json({ message: "Backend connected!" });
 });
-
-app.use(express.json());
 
 // 3. Koneksi PostgreSQL dengan Pooling Optimal
 const pool = new Pool({
@@ -193,6 +202,21 @@ app.get("/api/health", (_, res) => {
   });
 });
 
+app.get("/api/statistik", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        status, 
+        COUNT(*) as total 
+      FROM lokasi_parkir 
+      GROUP BY status
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 8. Endpoint Lokasi Parkir
 app.get("/api/lokasi-parkir", async (req, res) => {
   try {
@@ -209,7 +233,22 @@ app.get("/api/lokasi-parkir", async (req, res) => {
 // index.js (Backend)
 app.get("/api/lokasi-parkir/filter", async (req, res) => {
   try {
-    const { status, minKapasitas, maxKapasitas } = req.query;
+    const {
+      status,
+      minKapasitas,
+      maxKapasitas,
+      sortBy = "nama",
+      order = "ASC",
+    } = req.query;
+
+    // Validasi parameter sorting
+    const allowedSort = ["nama", "kapasitas", "status"];
+    const allowedOrder = ["ASC", "DESC"];
+
+    if (!allowedSort.includes(sortBy))
+      throw new Error("Kolom sorting tidak valid");
+    if (!allowedOrder.includes(order.toUpperCase()))
+      throw new Error("Order tidak valid");
 
     let query = "SELECT * FROM lokasi_parkir WHERE 1=1";
     const params = [];
@@ -230,10 +269,13 @@ app.get("/api/lokasi-parkir/filter", async (req, res) => {
       params.push(maxKapasitas);
     }
 
+    // Sorting
+    query += ` ORDER BY ${sortBy} ${order}`;
+
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
