@@ -5,7 +5,6 @@ import "leaflet/dist/leaflet.css";
 import styles from "./MapParkir.module.css";
 import { FiNavigation } from "react-icons/fi";
 
-// Marker Icons
 const createIcon = (status) =>
   L.icon({
     iconUrl: `/map-icons/${status}-marker.png`,
@@ -17,7 +16,6 @@ const createIcon = (status) =>
 export default function MapParkir({ parkirData }) {
   const center = [-7.952968, 112.613808];
 
-  // Fungsi Navigasi
   const handleNavigation = (lat, lng) => {
     window.open(
       `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`

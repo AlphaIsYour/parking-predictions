@@ -14,8 +14,8 @@ process.env.TZ = "Asia/Jakarta";
 const app = express();
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 menit
-  max: 100, // Maksimal 100 request per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -57,11 +57,9 @@ app.get("/api/prediksi/:lokasiId", async (req, res) => {
     let hour = parseInt(req.query.jam);
     let day = parseInt(req.query.hari);
 
-    // Validasi input
     if (isNaN(hour)) hour = new Date().getHours();
     if (isNaN(day)) day = new Date().getDay();
 
-    // Validasi range
     if (hour < 0 || hour > 23 || day < 0 || day > 6) {
       return res.status(400).json({
         error: "Parameter tidak valid",
@@ -116,7 +114,6 @@ app.post("/api/lapor", async (req, res) => {
   try {
     const { status, lokasiId } = req.body;
 
-    // Validasi input
     if (!lokasiId || !status) {
       return res.status(400).json({
         error: "Data tidak lengkap",
@@ -145,10 +142,8 @@ app.post("/api/lapor", async (req, res) => {
       });
     }
 
-    // Transaction untuk menjaga konsistensi data
     await pool.query("BEGIN");
 
-    // Update status
     const updateResult = await pool.query(
       `UPDATE lokasi_parkir 
        SET status = $1, updated_at = NOW()
@@ -157,7 +152,6 @@ app.post("/api/lapor", async (req, res) => {
       [status, lokasiId]
     );
 
-    // Simpan histori
     await pool.query(
       `INSERT INTO laporan_parkir (lokasi_id, kepadatan) 
        VALUES ($1, $2)`,
@@ -166,7 +160,6 @@ app.post("/api/lapor", async (req, res) => {
 
     await pool.query("COMMIT");
 
-    // Trigger real-time update
     await broadcastParkirUpdate();
 
     res.json({
@@ -241,7 +234,6 @@ app.get("/api/lokasi-parkir/filter", async (req, res) => {
       order = "ASC",
     } = req.query;
 
-    // Validasi parameter sorting
     const allowedSort = ["nama", "kapasitas", "status"];
     const allowedOrder = ["ASC", "DESC"];
 
@@ -253,13 +245,11 @@ app.get("/api/lokasi-parkir/filter", async (req, res) => {
     let query = "SELECT * FROM lokasi_parkir WHERE 1=1";
     const params = [];
 
-    // Filter Status
     if (status) {
       query += ` AND status = $${params.length + 1}`;
       params.push(status);
     }
 
-    // Filter Kapasitas
     if (minKapasitas) {
       query += ` AND kapasitas >= $${params.length + 1}`;
       params.push(minKapasitas);
@@ -300,7 +290,6 @@ const io = new Server(server, {
   },
 });
 
-// Fungsi broadcast update
 const broadcastParkirUpdate = async () => {
   try {
     const result = await pool.query("SELECT * FROM lokasi_parkir");

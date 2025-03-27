@@ -105,15 +105,14 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters]); // Tambahkan dependency filters
+  }, [filters]);
 
-  // Perbaiki useEffect yang menggunakan fetchData
   useEffect(() => {
     const socket = io("http://localhost:5001");
     socket.on("parkir-update", fetchData);
 
     return () => socket.disconnect();
-  }, [fetchData]); // Tambahkan fetchData ke dependency array
+  }, [fetchData]);
 
   useEffect(() => {
     fetchData();
@@ -242,8 +241,8 @@ export default function Home() {
                         "#f39c12", // Border kuning
                       ],
                       borderWidth: 2,
-                      borderRadius: 8, // Sudut melengkung
-                      barThickness: 70, // Lebar bar
+                      borderRadius: 8,
+                      barThickness: 70,
                     },
                   ],
                 }}
@@ -253,7 +252,7 @@ export default function Home() {
                     legend: {
                       position: "top",
                       labels: {
-                        color: darkMode ? "#fff" : "#2d3748", // Warna label dark mode
+                        color: darkMode ? "#fff" : "#2d3748",
                         font: { size: 14 },
                       },
                     },
@@ -263,7 +262,6 @@ export default function Home() {
                       bodyColor: darkMode ? "#fff" : "#2d3748",
                     },
                     datalabels: {
-                      // Butuh instal plugin
                       color: darkMode ? "#fff" : "#2d3748",
                       anchor: "center",
                       align: "top",
@@ -289,14 +287,14 @@ export default function Home() {
                     },
                   },
                   animation: {
-                    duration: 1500, // Animasi lebih panjang
+                    duration: 1500,
                     easing: "easeOutQuart",
                   },
                   onClick: (_, elements) => {
                     if (elements.length > 0) {
                       const index = elements[0].index;
                       const status = statsData[index].status;
-                      setFilters({ ...filters, status }); // Auto filter saat bar diklik
+                      setFilters({ ...filters, status });
                     }
                   },
                 }}
@@ -309,7 +307,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ... (section prediksi dan laporan tetap sama seperti sebelumnya) ... */}
         <div
           style={{
             backgroundColor: "#f8f9fa",
