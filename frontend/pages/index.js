@@ -5,6 +5,7 @@ import { Bar } from "react-chartjs-2";
 import { Chart, registerables } from "chart.js";
 import { FiSun, FiMoon, FiNavigation } from "react-icons/fi";
 import LoadingSpinner from "../components/LoadingSpinner";
+import ChartSkeleton from "../components/ChartSkeleton";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 Chart.register(ChartDataLabels);
 const MapParkir = dynamic(() => import("../components/MapParkir"), {
@@ -165,7 +166,7 @@ export default function Home() {
               onChange={(e) =>
                 setFilters({ ...filters, minKapasitas: e.target.value })
               }
-              className="p-2 rounded border dark:bg-gray-700"
+              className="p-2 rounded border text-white dark:bg-gray-700"
             />
 
             <input
@@ -175,7 +176,7 @@ export default function Home() {
               onChange={(e) =>
                 setFilters({ ...filters, maxKapasitas: e.target.value })
               }
-              className="p-2 rounded border dark:bg-gray-700"
+              className="p-2 rounded border text-white dark:bg-gray-700"
             />
 
             {/* Sorting */}
@@ -221,7 +222,9 @@ export default function Home() {
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
             <h2 className="text-xl font-semibold mb-4">📊 Statistik Parkir</h2>
-            {statsData ? (
+            {isLoading ? (
+              <ChartSkeleton />
+            ) : statsData ? (
               <Bar
                 className="mt-30"
                 data={{
@@ -308,15 +311,17 @@ export default function Home() {
         </div>
 
         <div
+          className="dark:bg-gray-800"
           style={{
-            backgroundColor: "#f8f9fa",
             padding: "20px",
             borderRadius: "10px",
             marginBottom: "20px",
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           }}
         >
-          <h2 style={{ color: "#34495e" }}>🕵️ Cek Prediksi Kepadatan</h2>
+          <h2 style={{ color: "white", marginBottom: "10px" }}>
+            🕵️ Cek Prediksi Kepadatan
+          </h2>
           <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
             <input
               type="number"
@@ -326,10 +331,11 @@ export default function Home() {
               value={jam}
               onChange={(e) => setJam(e.target.value)}
               style={{
-                color: "black",
+                color: "white",
                 padding: "8px",
                 borderRadius: "5px",
                 border: "1px solid #ddd",
+                width: "100px",
               }}
             />
             <select
@@ -337,7 +343,7 @@ export default function Home() {
               onChange={(e) => setHari(e.target.value)}
               style={{
                 padding: "8px",
-                color: "black",
+                color: "white",
                 borderRadius: "5px",
                 border: "1px solid #ddd",
               }}
@@ -353,9 +359,9 @@ export default function Home() {
             </select>
             <button
               onClick={checkPrediksi}
+              className="bg-orange-500"
               style={{
                 padding: "8px 15px",
-                backgroundColor: "#3498db",
                 color: "white",
                 border: "none",
                 borderRadius: "5px",
@@ -391,14 +397,16 @@ export default function Home() {
 
         {/* Section Lapor Parkir */}
         <div
+          className="dark:bg-gray-800"
           style={{
-            backgroundColor: "#f8f9fa",
             padding: "20px",
             borderRadius: "10px",
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           }}
         >
-          <h2 style={{ color: "#34495e" }}>📢 Lapor Status Parkir</h2>
+          <h2 style={{ color: "white", marginBottom: "10px" }}>
+            📢 Lapor Status Parkir
+          </h2>
           <form
             onSubmit={handleSubmit}
             style={{ display: "flex", gap: "10px" }}
@@ -410,7 +418,7 @@ export default function Home() {
               onChange={(e) => setLokasiId(e.target.value)}
               required
               style={{
-                color: "black",
+                color: "white",
                 padding: "8px",
                 borderRadius: "5px",
                 border: "1px solid #ddd",
@@ -420,7 +428,7 @@ export default function Home() {
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               style={{
-                color: "black",
+                color: "white",
                 padding: "8px",
                 borderRadius: "5px",
                 border: "1px solid #ddd",
@@ -432,9 +440,9 @@ export default function Home() {
             </select>
             <button
               type="submit"
+              className="bg-orange-500"
               style={{
                 padding: "8px 15px",
-                backgroundColor: "#2ecc71",
                 color: "white",
                 border: "none",
                 borderRadius: "5px",

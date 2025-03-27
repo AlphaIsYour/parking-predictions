@@ -1,28 +1,57 @@
-const express = require("express");
-const { Pool } = require("pg");
-const cors = require("cors");
-const { exec } = require("child_process");
-const http = require("http");
-const { Server } = require("socket.io");
-const rateLimit = require("express-rate-limit");
-require("dotenv").config();
+import { createClient } from "redis";
+import express from "express";
+import pg from "pg";
+const { Pool } = pg;
+import cors from "cors";
+import { exec } from "child_process";
+import http from "http";
+import { Server } from "socket.io";
+import rateLimit from "express-rate-limit";
+import "dotenv/config";
+import { fileURLToPath } from "url";
+import path from "path"; // <-- Perubahan di sini
 
-// 0. Konfigurasi Timezone (Asia/Jakarta)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 1. Fix Redis connection
+const redisClient = createClient({
+  url: process.env.REDIS_URL,
+  socket: {
+    reconnectStrategy: (retries) => {
+      console.log(`Mencoba reconnect ke Redis... (${retries})`);
+      return 5000; // Coba reconnect setiap 5 detik
+    },
+  },
+});
+
+(async () => {
+  try {
+    await redisClient.connect();
+    console.log("✅ Redis connected");
+    await redisClient.set("connection_test", "success");
+  } catch (err) {
+    console.error("❌ Redis connection failed:", err);
+    process.exit(1);
+  }
+})();
+
+// 2. Set timezone
 process.env.TZ = "Asia/Jakarta";
 
-// 1. Inisialisasi Express
+// 3. Initialize Express
 const app = express();
 
+// 4. Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
 });
-
 app.use(limiter);
 
-// 2. Middleware
+// 5. Middleware
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://your-production-domain.com"],
@@ -32,84 +61,72 @@ app.use(
 );
 app.use(express.json());
 
-app.get("/api/test", (_, res) => {
-  res.json({ message: "Backend connected!" });
-});
-
-// 3. Koneksi PostgreSQL dengan Pooling Optimal
+// 6. PostgreSQL Pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
 });
 
-// 4. Middleware Logging untuk Debugging
+// 7. Logging middleware
 app.use((req, _, next) => {
   console.log(`${new Date().toISOString()} | ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// 5. Endpoint Prediksi (Diperbaiki)
+// 8. Prediction endpoint
 app.get("/api/prediksi/:lokasiId", async (req, res) => {
   try {
     const { lokasiId } = req.params;
-    let hour = parseInt(req.query.jam);
-    let day = parseInt(req.query.hari);
-
-    if (isNaN(hour)) hour = new Date().getHours();
-    if (isNaN(day)) day = new Date().getDay();
+    let hour = parseInt(req.query.jam) || new Date().getHours();
+    let day = parseInt(req.query.hari) || new Date().getDay();
 
     if (hour < 0 || hour > 23 || day < 0 || day > 6) {
       return res.status(400).json({
-        error: "Parameter tidak valid",
-        detail: "Jam: 0-23, Hari: 0-6 (0=Minggu)",
+        error: "Invalid parameters",
+        detail: "Hour: 0-23, Day: 0-6 (0=Sunday)",
       });
     }
 
-    // Eksekusi model ML
-    exec(
-      `C:/laragon/www/parking-ub/.venv/Scripts/python.exe predict.py predict ${hour} ${day}`,
-      { cwd: __dirname },
-      (error, stdout, stderr) => {
-        if (error) {
-          console.error("Error prediksi:", { error, stderr });
-          return res.status(500).json({
-            error: "Gagal melakukan prediksi",
-            detail: "Model AI tidak dapat memproses data",
-          });
-        }
+    const pythonCommand = `"${
+      process.env.PYTHON_PATH || "python3"
+    }" predict.py predict ${hour} ${day}`;
 
-        const prediksi = parseInt(stdout);
-        if (isNaN(prediksi)) throw new Error("Output model tidak valid");
-
-        res.json({
-          success: true,
-          prediksi: ["kosong", "ramai", "penuh"][prediksi],
-          jam: hour,
-          hari: [
-            "Minggu",
-            "Senin",
-            "Selasa",
-            "Rabu",
-            "Kamis",
-            "Jumat",
-            "Sabtu",
-          ][day],
-          timestamp: new Date().toISOString(),
+    exec(pythonCommand, { cwd: __dirname }, (error, stdout, stderr) => {
+      if (error) {
+        console.error("Prediction error:", { error, stderr });
+        return res.status(500).json({
+          error: "Prediction failed",
+          detail: "AI model processing error",
         });
       }
-    );
+
+      const prediction = parseInt(stdout);
+      if (isNaN(prediction)) {
+        throw new Error("Invalid model output");
+      }
+
+      res.json({
+        success: true,
+        prediksi: ["kosong", "ramai", "penuh"][prediction],
+        jam: hour,
+        hari: ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][
+          day
+        ],
+        timestamp: new Date().toISOString(),
+      });
+    });
   } catch (err) {
-    console.error("Error sistem prediksi:", err);
+    console.error("Prediction system error:", err);
     res.status(500).json({
-      error: "Kesalahan sistem prediksi",
+      error: "Prediction system error",
       detail: err.message,
     });
   }
 });
 
-// 6. Endpoint Lapor Parkir (Diperkuat)
+// 9. Error handling and other endpoints remain similar with proper async/await
 app.post("/api/lapor", async (req, res) => {
   try {
     const { status, lokasiId } = req.body;
@@ -186,13 +203,17 @@ app.post("/api/lapor", async (req, res) => {
 });
 
 // 7. Health Check Endpoint
-app.get("/api/health", (_, res) => {
-  res.json({
-    status: "OK",
-    timestamp: new Date().toISOString(),
-    database: pool.totalCount > 0 ? "CONNECTED" : "DISCONNECTED",
-    memoryUsage: process.memoryUsage(),
-  });
+app.get("/api/health", async (_, res) => {
+  try {
+    await pool.query("SELECT 1"); // Test query sederhana
+    res.json({
+      status: "OK",
+      database: "CONNECTED",
+      redis: client.isReady ? "CONNECTED" : "DISCONNECTED",
+    });
+  } catch (err) {
+    res.json({ status: "WARNING", database: "DISCONNECTED" });
+  }
 });
 
 app.get("/api/statistik", async (req, res) => {
@@ -213,12 +234,25 @@ app.get("/api/statistik", async (req, res) => {
 // 8. Endpoint Lokasi Parkir
 app.get("/api/lokasi-parkir", async (req, res) => {
   try {
-    console.log("Mencoba koneksi database...");
+    const cacheKey = "parkirData";
+
+    // Cek cache
+    const cachedData = await client.get(cacheKey);
+    if (cachedData) {
+      console.log("Mengambil data dari cache");
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Jika tidak ada cache, query DB
+    console.log("Mengambil data dari database");
     const result = await pool.query("SELECT * FROM lokasi_parkir");
-    console.log("Data dari DB:", result.rows);
+
+    // Simpan ke cache (expire 1 menit)
+    await client.setEx(cacheKey, 60, JSON.stringify(result.rows));
+
     res.json(result.rows);
   } catch (err) {
-    console.error("Error DB:", err);
+    console.error("Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -242,27 +276,36 @@ app.get("/api/lokasi-parkir/filter", async (req, res) => {
     if (!allowedOrder.includes(order.toUpperCase()))
       throw new Error("Order tidak valid");
 
-    let query = "SELECT * FROM lokasi_parkir WHERE 1=1";
+    let whereConditions = [];
     const params = [];
 
     if (status) {
-      query += ` AND status = $${params.length + 1}`;
+      whereConditions.push(`status = $${params.length + 1}`);
       params.push(status);
     }
 
     if (minKapasitas) {
-      query += ` AND kapasitas >= $${params.length + 1}`;
+      whereConditions.push(`kapasitas >= $${params.length + 1}`);
       params.push(minKapasitas);
     }
     if (maxKapasitas) {
-      query += ` AND kapasitas <= $${params.length + 1}`;
+      whereConditions.push(`kapasitas <= $${params.length + 1}`);
       params.push(maxKapasitas);
     }
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
 
     // Sorting
     query += ` ORDER BY ${sortBy} ${order}`;
 
-    const result = await pool.query(query, params);
+    const result = await pool.query({
+      text: `SELECT * FROM lokasi_parkir 
+             ${whereClause} 
+             ORDER BY ${sortBy} ${order}`,
+      values: params,
+    });
     res.json(result.rows);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -282,6 +325,23 @@ app.use((err, _, res, __) => {
 });
 
 // 10. Setup Socket.io
+
+const broadcastParkirUpdate = async () => {
+  try {
+    const result = await pool.query("SELECT * FROM lokasi_parkir");
+    io.emit("parkir-update", {
+      status: "success",
+      data: result.rows,
+    });
+  } catch (err) {
+    io.emit("parkir-error", {
+      code: "DB_ERROR",
+      message: "Gagal mengambil data parkir",
+    });
+  }
+};
+
+// 10. Server setup
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -290,21 +350,13 @@ const io = new Server(server, {
   },
 });
 
-const broadcastParkirUpdate = async () => {
-  try {
-    const result = await pool.query("SELECT * FROM lokasi_parkir");
-    io.emit("parkir-update", result.rows);
-  } catch (err) {
-    console.error("Gagal broadcast update:", err);
-  }
-};
-
-// 11. Jalankan Server
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
+  const dbUrl = new URL(process.env.DATABASE_URL);
   console.log(`
-  🚀 Server & Socket.io berjalan di port ${PORT}
+  🚀 Server running on port ${PORT}
   Mode: ${process.env.NODE_ENV || "development"}
-  Database: ${pool.options.connectionString.split("@")[1]}
+  Database: ${dbUrl.hostname}
+  Redis: ${redisClient.isReady ? "connected" : "disconnected"}
   `);
 });
