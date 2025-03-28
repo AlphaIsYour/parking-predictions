@@ -8,16 +8,20 @@ import { FiNavigation } from "react-icons/fi";
 // Fix untuk icon marker yang hilang
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "/map-icons/marker-icon-2x.png",
-  iconUrl: "/map-icons/marker-icon.png",
+  iconRetinaUrl: "/map-icons/default-marker.png",
+  iconUrl: "/map-icons/default-marker.png",
   shadowUrl: "/map-icons/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
 
 const createIcon = (status) =>
   L.icon({
     iconUrl: `/map-icons/${status}-marker.png`,
     shadowUrl: "/map-icons/marker-shadow.png",
-    iconSize: [32, 40],
+    iconSize: [25, 41],
     iconAnchor: [16, 40],
     popupAnchor: [0, -40],
   });

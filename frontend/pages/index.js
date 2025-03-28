@@ -7,6 +7,7 @@ import { FiSun, FiMoon, FiNavigation } from "react-icons/fi";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ChartSkeleton from "../components/ChartSkeleton";
 import ChartDataLabels from "chartjs-plugin-datalabels";
+import Swal from "sweetalert2";
 Chart.register(ChartDataLabels);
 const MapParkir = dynamic(() => import("../components/MapParkir"), {
   ssr: false,
@@ -15,7 +16,7 @@ const MapParkir = dynamic(() => import("../components/MapParkir"), {
 Chart.register(...registerables);
 
 export default function Home() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [parkirData, setParkirData] = useState([]);
   const [statsData, setStatsData] = useState(null);
@@ -33,9 +34,36 @@ export default function Home() {
   });
 
   const checkPrediksi = async () => {
-    // Validasi input
-    if (!jam || !hari) {
-      alert("Harap isi jam dan hari terlebih dahulu!");
+    // Validasi input yang lebih ketat
+    if (!jam || jam === "") {
+      Swal.fire({
+        icon: "warning",
+        title: "Perhatian",
+        text: "Harap masukkan jam terlebih dahulu!",
+        confirmButtonColor: "#3085d6",
+      });
+      return;
+    }
+
+    // Validasi rentang jam
+    const jamNumber = parseInt(jam);
+    if (isNaN(jamNumber) || jamNumber < 0 || jamNumber > 23) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Input",
+        text: "Jam harus berupa angka antara 0-23!",
+        confirmButtonColor: "#d33",
+      });
+      return;
+    }
+
+    if (!hari) {
+      Swal.fire({
+        icon: "warning",
+        title: "Perhatian",
+        text: "Harap pilih hari terlebih dahulu!",
+        confirmButtonColor: "#3085d6",
+      });
       return;
     }
 
@@ -54,9 +82,30 @@ export default function Home() {
       }
 
       const data = await response.json();
+
+      // Gunakan SweetAlert untuk menampilkan hasil prediksi
+      Swal.fire({
+        icon: "info",
+        title: "Hasil Prediksi",
+        html: `
+          <p>📍 Lokasi: Parkiran Vokasi</p>
+          <p>⏰ Jam: ${data.jam}.00</p>
+          <p>📅 Hari: ${data.hari}</p>
+          <p>🚦 Status: <strong>${data.prediksi.toUpperCase()}</strong></p>
+        `,
+        confirmButtonColor: "#3085d6",
+      });
+
       setPrediksi(data);
     } catch (err) {
-      alert(`ERROR: ${err.message}`);
+      // Error handling dengan SweetAlert
+      Swal.fire({
+        icon: "error",
+        title: "Prediksi Gagal",
+        text: err.message || "Terjadi kesalahan saat mengambil prediksi",
+        confirmButtonColor: "#d33",
+        footer: '<a href="#">Hubungi admin jika masalah berlanjut</a>',
+      });
       console.error("Detail error:", {
         url: `http://localhost:5001/api/prediksi/1?jam=${jam}&hari=${hari}`,
         error: err.stack,
@@ -66,6 +115,18 @@ export default function Home() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validasi input
+    if (!lokasiId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Perhatian",
+        text: "Harap masukkan ID Lokasi!",
+        confirmButtonColor: "#3085d6",
+      });
+      return;
+    }
+
     try {
       const response = await fetch("http://localhost:5001/api/lapor", {
         method: "POST",
@@ -76,13 +137,33 @@ export default function Home() {
         }),
       });
 
-      if (!response.ok) throw new Error("Gagal mengirim laporan");
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || "Gagal mengirim laporan");
+      }
 
-      alert("Laporan berhasil! 🎉");
+      // Success handling dengan SweetAlert
+      Swal.fire({
+        icon: "success",
+        title: "Laporan Berhasil",
+        text: "Status parkir berhasil diperbarui!",
+        confirmButtonColor: "#28a745",
+        timer: 2000,
+        timerProgressBar: true,
+      });
+
+      // Reset form
       setLokasiId("");
       setStatus("kosong");
     } catch (err) {
-      alert(err.message);
+      // Error handling dengan SweetAlert
+      Swal.fire({
+        icon: "error",
+        title: "Laporan Gagal",
+        text: err.message || "Gagal mengirim laporan",
+        confirmButtonColor: "#d33",
+        footer: '<a href="#">Hubungi admin jika masalah berlanjut</a>',
+      });
     }
   };
 
@@ -324,6 +405,7 @@ export default function Home() {
           </h2>
           <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
             <input
+              className="dark:bg-gray-700"
               type="number"
               min="0"
               max="23"
@@ -335,10 +417,11 @@ export default function Home() {
                 padding: "8px",
                 borderRadius: "5px",
                 border: "1px solid #ddd",
-                width: "100px",
+                width: "215px",
               }}
             />
             <select
+              className="dark:bg-gray-700"
               value={hari}
               onChange={(e) => setHari(e.target.value)}
               style={{
@@ -375,20 +458,20 @@ export default function Home() {
           {/* Hasil Prediksi */}
           {prediksi && (
             <div
+              className="dark:bg-gray-700"
               style={{
-                backgroundColor: "white",
                 padding: "15px",
                 borderRadius: "8px",
-                border: "1px solid #3498db",
+                border: "1px solid #fff",
               }}
             >
-              <h3 style={{ color: "#3498db", marginTop: 0 }}>
+              <h3 style={{ color: "white", marginTop: 0 }}>
                 📊 Hasil Prediksi
               </h3>
-              <p style={{ color: "#000" }}>📍 Lokasi: Parkiran Vokasi</p>
-              <p style={{ color: "#000" }}>⏰ Jam: {prediksi.jam}.00</p>
-              <p style={{ color: "#000" }}>📅 Hari: {prediksi.hari}</p>
-              <p style={{ color: "#000" }}>
+              <p style={{ color: "#fff" }}>📍 Lokasi: Parkiran Vokasi</p>
+              <p style={{ color: "#fff" }}>⏰ Jam: {prediksi.jam}.00</p>
+              <p style={{ color: "#fff" }}>📅 Hari: {prediksi.hari}</p>
+              <p style={{ color: "#fff" }}>
                 🚦 Status: <strong>{prediksi.prediksi.toUpperCase()}</strong>
               </p>
             </div>
@@ -412,6 +495,7 @@ export default function Home() {
             style={{ display: "flex", gap: "10px" }}
           >
             <input
+              className="dark:bg-gray-700"
               type="number"
               placeholder="ID Lokasi"
               value={lokasiId}
@@ -427,6 +511,7 @@ export default function Home() {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
+              className="dark:bg-gray-700"
               style={{
                 color: "white",
                 padding: "8px",

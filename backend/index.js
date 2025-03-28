@@ -297,15 +297,13 @@ app.get("/api/lokasi-parkir/filter", async (req, res) => {
         ? `WHERE ${whereConditions.join(" AND ")}`
         : "";
 
-    // Sorting
-    query += ` ORDER BY ${sortBy} ${order}`;
-
     const result = await pool.query({
       text: `SELECT * FROM lokasi_parkir 
              ${whereClause} 
              ORDER BY ${sortBy} ${order}`,
       values: params,
     });
+
     res.json(result.rows);
   } catch (err) {
     res.status(400).json({ error: err.message });
