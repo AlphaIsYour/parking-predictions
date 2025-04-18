@@ -75,7 +75,6 @@ app.use((req, _, next) => {
   next();
 });
 
-// 8. Prediction endpoint
 app.get("/api/prediksi/:lokasiId", async (req, res) => {
   try {
     const { lokasiId } = req.params;
@@ -89,9 +88,10 @@ app.get("/api/prediksi/:lokasiId", async (req, res) => {
       });
     }
 
+    // Sertakan DATABASE_URL sebagai argumen tambahan
     const pythonCommand = `"${
       process.env.PYTHON_PATH || "python3"
-    }" predict.py predict ${hour} ${day}`;
+    }" predict.py predict ${hour} ${day} "${process.env.DATABASE_URL}"`;
 
     exec(pythonCommand, { cwd: __dirname }, (error, stdout, stderr) => {
       if (error) {
