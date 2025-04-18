@@ -23,7 +23,7 @@ export default function Home() {
   const [prediksi, setPrediksi] = useState(null);
   const [lokasiId, setLokasiId] = useState("");
   const [status, setStatus] = useState("kosong");
-  const [jam, setJam] = useState(""); // <--- Tambahkan ini
+  const [jam, setJam] = useState("");
   const [hari, setHari] = useState("");
   const [filters, setFilters] = useState({
     status: "",
@@ -34,7 +34,6 @@ export default function Home() {
   });
 
   const checkPrediksi = async () => {
-    // Validasi input yang lebih ketat
     if (!jam || jam === "") {
       Swal.fire({
         icon: "warning",
@@ -83,7 +82,6 @@ export default function Home() {
 
       const data = await response.json();
 
-      // Gunakan SweetAlert untuk menampilkan hasil prediksi
       Swal.fire({
         icon: "info",
         title: "Hasil Prediksi",
@@ -98,7 +96,6 @@ export default function Home() {
 
       setPrediksi(data);
     } catch (err) {
-      // Error handling dengan SweetAlert
       Swal.fire({
         icon: "error",
         title: "Prediksi Gagal",
@@ -116,7 +113,6 @@ export default function Home() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validasi input
     if (!lokasiId) {
       Swal.fire({
         icon: "warning",
@@ -142,7 +138,6 @@ export default function Home() {
         throw new Error(errorData || "Gagal mengirim laporan");
       }
 
-      // Success handling dengan SweetAlert
       Swal.fire({
         icon: "success",
         title: "Laporan Berhasil",
@@ -152,11 +147,9 @@ export default function Home() {
         timerProgressBar: true,
       });
 
-      // Reset form
       setLokasiId("");
       setStatus("kosong");
     } catch (err) {
-      // Error handling dengan SweetAlert
       Swal.fire({
         icon: "error",
         title: "Laporan Gagal",
@@ -167,7 +160,6 @@ export default function Home() {
     }
   };
 
-  // Fungsi Ambil Data
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -200,7 +192,6 @@ export default function Home() {
     fetchData();
   }, [fetchData]);
 
-  // Tema gelap
   const themeClasses = darkMode
     ? "bg-gray-900 text-white"
     : "bg-gray-50 text-gray-800";
@@ -208,7 +199,6 @@ export default function Home() {
   return (
     <div className={`min-h-screen p-6 ${themeClasses}`}>
       <div className="max-w-6xl mx-auto">
-        {/* Header & Toggle Theme */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">🅿️ Sistem Prediksi Parkir UB</h1>
           <button
@@ -219,14 +209,11 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Loading Indicator */}
         {isLoading && <LoadingSpinner />}
 
-        {/* Section Filter */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
           <h2 className="text-xl font-semibold mb-4">🔍 Filter & Sorting</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Input Filter (Status, Kapasitas) */}
             <select
               value={filters.status}
               onChange={(e) =>
@@ -260,7 +247,6 @@ export default function Home() {
               className="p-2 rounded border text-white dark:bg-gray-700"
             />
 
-            {/* Sorting */}
             <select
               value={filters.sortBy}
               onChange={(e) =>
@@ -292,7 +278,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Peta & Statistik */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
             <h2 className="text-xl font-semibold mb-4">🗺️ Peta Parkir UB</h2>
@@ -315,15 +300,11 @@ export default function Home() {
                       label: "Jumlah Lokasi",
                       data: statsData.map((item) => item.total),
                       backgroundColor: [
-                        "rgba(46, 204, 113, 0.8)", // Kosong (hijau transparan)
-                        "rgba(231, 76, 60, 0.8)", // Ramai (merah transparan)
-                        "rgba(241, 196, 15, 0.8)", // Penuh (kuning transparan)
+                        "rgba(46, 204, 113, 0.8)",
+                        "rgba(231, 76, 60, 0.8)",
+                        "rgba(241, 196, 15, 0.8)",
                       ],
-                      borderColor: [
-                        "#27ae60", // Border hijau
-                        "#c0392b", // Border merah
-                        "#f39c12", // Border kuning
-                      ],
+                      borderColor: ["#27ae60", "#c0392b", "#f39c12"],
                       borderWidth: 2,
                       borderRadius: 8,
                       barThickness: 70,
@@ -455,7 +436,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Hasil Prediksi */}
           {prediksi && (
             <div
               className="dark:bg-gray-700"
@@ -478,7 +458,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Section Lapor Parkir */}
         <div
           className="dark:bg-gray-800"
           style={{
