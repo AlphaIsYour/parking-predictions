@@ -5,13 +5,11 @@ import joblib
 import psycopg2
 from psycopg2 import Error
 
-# Fungsi untuk koneksi ke PostgreSQL
 def connect_db(db_url=None):
     try:
         if db_url:
             connection = psycopg2.connect(db_url)
         else:
-            # Fallback ke konfigurasi manual jika db_url tidak ada
             connection = psycopg2.connect(
                 host="localhost",
                 database="parkir_ub",
@@ -24,7 +22,6 @@ def connect_db(db_url=None):
         print(f"Error connecting to PostgreSQL: {e}")
         sys.exit(1)
 
-# Fungsi untuk mengambil data dari database
 def fetch_data_from_db(db_url=None):
     connection = connect_db(db_url)
     query = """
@@ -49,11 +46,11 @@ if len(sys.argv) < 2:
 mode = sys.argv[1]
 
 if mode == "train":
-    # Training code
+
     db_url = sys.argv[2] if len(sys.argv) > 2 else None
     data = fetch_data_from_db(db_url)
     
-    # Mapping kepadatan ke nilai numerik
+
     data['kepadatan'] = data['kepadatan'].map({'kosong': 0, 'ramai': 1, 'penuh': 2})
     
     X = data[['jam', 'hari']]
@@ -72,7 +69,7 @@ elif mode == "predict":
     
     hour = int(sys.argv[2])
     day = int(sys.argv[3])
-    db_url = sys.argv[4] if len(sys.argv) > 4 else None  # Ambil db_url jika ada
+    db_url = sys.argv[4] if len(sys.argv) > 4 else None  
     
     model = joblib.load('model_parkir.pkl')
     prediction = model.predict([[hour, day]])[0]
